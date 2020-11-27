@@ -1,8 +1,12 @@
 #include "mydll.h"
 #include <codecvt>
 #include <iostream>
-// #include <dlfcn.h>
+
+#ifdef _WIN32
 #include "win32-dlfcn.h"
+#else
+#include <dlfcn.h>
+#endif
 
 typedef int (*CAC_FUNC)(int, int);
 
@@ -23,15 +27,6 @@ Napi::Object MyDll::Init(Napi::Env env, Napi::Object exports)
 MyDll::MyDll(const Napi::CallbackInfo &info)
     : Napi::ObjectWrap<MyDll>(info)
 {
-    // WCHAR *filewstr = UTF8toWCHAR(info[0].ToString().Utf8Value().c_str());
-    // this->module_ = LoadLibraryW(filewstr);
-    // if (this->module_ == NULL)
-    // {
-    //     printf("Failed to load dll \n");
-    //     exit(1);
-    // }
-    // free(filewstr);
-
     this->module_ = dlopen(info[0].ToString().Utf8Value().c_str(), RTLD_LAZY);
     if (this->module_ == NULL)
     {
