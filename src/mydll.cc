@@ -8,8 +8,6 @@
 #include <dlfcn.h>
 #endif
 
-typedef int (*CAC_FUNC)(int, int);
-
 Napi::Object MyDll::Init(Napi::Env env, Napi::Object exports)
 {
 
@@ -27,10 +25,19 @@ Napi::Object MyDll::Init(Napi::Env env, Napi::Object exports)
 MyDll::MyDll(const Napi::CallbackInfo &info)
     : Napi::ObjectWrap<MyDll>(info)
 {
+    char *error;
+
     this->module_ = dlopen(info[0].ToString().Utf8Value().c_str(), RTLD_LAZY);
     if (this->module_ == NULL)
     {
         printf("Failed to load dylib \n");
+        exit(EXIT_FAILURE);
+    }
+
+    *(void **)(&this->s_add) = dlsym(this->module_, "add");
+    if ((error = dlerror()) != NULL)
+    {
+        fprintf(stderr, "%s\n", error);
         exit(EXIT_FAILURE);
     }
 };
@@ -50,8 +57,7 @@ Napi::Object MyDll::NewInstance(Napi::Env env, Napi::Value arg)
 Napi::Value MyDll::add(const Napi::CallbackInfo &info)
 {
     Napi::Env env = info.Env();
-    CAC_FUNC cac_func = NULL;
-    char *error;
+    // CAC_FUNC cac_func = NULL;
 
     if (info.Length() < 2)
     {
@@ -69,18 +75,21 @@ Napi::Value MyDll::add(const Napi::CallbackInfo &info)
     int arg0 = info[0].As<Napi::Number>().Int32Value();
     int arg1 = info[1].As<Napi::Number>().Int32Value();
 
-    *(void **)(&cac_func) = dlsym(this->module_, "add");
+    // ------------ 调用方式 1 -----------------
+    // *(void **)(&cac_func) = dlsym(this->module_, "add");
 
-    if ((error = dlerror()) != NULL)
-    {
-        fprintf(stderr, "%s\n", error);
-        exit(EXIT_FAILURE);
-    }
+    // if ((error = dlerror()) != NULL)
+    // {
+    //     fprintf(stderr, "%s\n", error);
+    //     exit(EXIT_FAILURE);
+    // }
+    // int result = (*cac_func)(arg0, arg1);
 
+    // ----------- 调用方式 2 -----------------
     // typedef int (*pAdd)(int, int);
     // pAdd box = (pAdd)GetProcAddress(this->module_, "add");
 
-    int result = (*cac_func)(arg0, arg1);
+    int result = (*this->s_add)(arg0, arg1);
 
     return Napi::Number::New(env, result);
 }
